@@ -1,0 +1,117 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat em Tempo Real</title>
+    <style>
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 70%;
+        }
+        
+        .sent {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .received {
+            background-color: #f1f0f0;
+            margin-right: auto;
+        }
+        
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        
+        @media (max-width: 600px) {
+            .chat-container {
+                margin: 10px;
+                padding: 10px;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://localhost:8080');
+        const userId = Math.floor(Math.random() * 1000); // Simulação de ID de usuário
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+
+        socket.onopen = function() {
+            console.log('Conectado ao servidor WebSocket');
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'history') {
+                data.data.forEach(msg => displayMessage(msg));
+            } else if (data.type === 'message') {
+                displayMessage(data);
+            }
+        };
+
+        function displayMessage(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.classList.add(data.user_id == userId ? 'sent' : 'received');
+            messageDiv.innerHTML = `
+                <strong>Usuário ${data.user_id}</strong><br>
+                ${data.message}<br>
+                <small>${data.timestamp || new Date().toLocaleString()}</small>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.send(JSON.stringify({
+                    type: 'message',
+                    user_id: userId,
+                    message: message
+                }));
+                messageInput.value = '';
+            }
+        }
+
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
